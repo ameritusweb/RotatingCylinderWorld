@@ -81,7 +81,6 @@ namespace RotatingCylinderWorld
         /// </summary>
 
         private float CalculateInteraction(float angle1, float angle2)
-
         {
 
             float angleDiff = Math.Abs(angle1 - angle2);
@@ -97,11 +96,8 @@ namespace RotatingCylinderWorld
 
 
         /// <summary>
-
         /// Weight the stored angle-bucket relationships by cylinder interactions and update bucket values
-
         /// </summary>
-
         public void UpdateBuckets(Dictionary<int, float> currentAngles)
 
         {

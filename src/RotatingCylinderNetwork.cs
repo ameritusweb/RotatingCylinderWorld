@@ -111,7 +111,6 @@ namespace RotatingCylinderWorld
         /// </summary>
 
         public int Classify()
-
         {
 
             return _angularBucket.GetMaxBucket();

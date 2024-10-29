@@ -44,7 +44,7 @@ namespace RotatingCylinderWorld
                 float modulatedTangentialAcceleration = _accelerationColumn.GetBezierModulatedAcceleration(timeIndex, t);
 
                 // Convert tangential acceleration to angular acceleration (α = a/r)
-                float angularAcceleration = modulatedTangentialAcceleration / radius;
+                float angularAcceleration = modulatedTangentialAcceleration / 1f;
 
                 // Update angular velocity using angular acceleration
                 angularVelocity += angularAcceleration * timeIncrement;

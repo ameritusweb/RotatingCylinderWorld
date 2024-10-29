@@ -16,8 +16,18 @@ namespace RotatingCylinderWorld
         public void UpdateAngle(float diff)
         {
             this.angle += diff;
+            if (this.angle > (2 * MathF.PI))
+            {
+                this.angle = this.angle % (2 * MathF.PI);
+            }
         }
 
-        public float CurrentAngle { get; private set; }
+        public float CurrentAngle 
+        { 
+            get
+            {
+                return this.angle;
+            }
+        }
     }
 }
