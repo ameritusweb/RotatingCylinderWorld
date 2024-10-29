@@ -12,12 +12,14 @@ namespace RotatingCylinderWorld
         private ControlColumn _velocityColumn;
         private ControlColumn _accelerationColumn;
         private ControlColumn _timeDeltaColumn;
-        public CylinderControl(Cylinder cylinder, ControlColumn velocityColumn, ControlColumn accelerationColumn, ControlColumn timeDeltaColumn)
+        private float radius;
+        public CylinderControl(Cylinder cylinder, ControlColumn velocityColumn, ControlColumn accelerationColumn, ControlColumn timeDeltaColumn, float radius)
         {
             this._cylinder = cylinder;
             this._velocityColumn = velocityColumn;
             this._accelerationColumn = accelerationColumn;
             this._timeDeltaColumn = timeDeltaColumn;
+            this.radius = radius;
         }
         /// <summary>
         /// Update the cylinder's angle based on the control columns for velocity, modulated acceleration, and time.
