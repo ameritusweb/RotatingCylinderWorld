@@ -23,24 +23,34 @@ namespace RotatingCylinderWorld
         }
         /// <summary>
         /// Update the cylinder's angle based on the control columns for velocity, modulated acceleration, and time.
-        /// The acceleration is modulated by a Bézier curve during the time step.
+        /// The acceleration is modulated by a Bézier curve during the time step, and motion is adjusted for radius.
         /// </summary>
         public void UpdateMotion(int timeIndex)
         {
-            float velocity = _velocityColumn.GetValue(timeIndex);
+            float tangentialVelocity = _velocityColumn.GetValue(timeIndex);
             float deltaTime = _timeDeltaColumn.GetValue(timeIndex);
-            // Loop over small increments of time to simulate continuous acceleration over the time step
-            int numSubSteps = 10; // Use finer sub-steps to compute modulated acceleration
+
+            // Convert tangential velocity to angular velocity (ω = v/r)
+            float angularVelocity = tangentialVelocity / radius;
+
+            int numSubSteps = 10;
             float timeIncrement = deltaTime / numSubSteps;
+
             for (int subStep = 0; subStep < numSubSteps; subStep++)
             {
-                float t = (float)subStep / numSubSteps; // Normalized time between 0 and 1
-                                                        // Get the modulated acceleration using Bézier curve for the current sub-step
-                float modulatedAcceleration = _accelerationColumn.GetBezierModulatedAcceleration(timeIndex, t);
-                // Update the velocity incrementally using the modulated acceleration
-                velocity += modulatedAcceleration * timeIncrement;
-                // Update the cylinder's angle based on the current velocity and time increment
-                float angleDelta = velocity * timeIncrement;
+                float t = (float)subStep / numSubSteps;
+
+                // Get modulated tangential acceleration
+                float modulatedTangentialAcceleration = _accelerationColumn.GetBezierModulatedAcceleration(timeIndex, t);
+
+                // Convert tangential acceleration to angular acceleration (α = a/r)
+                float angularAcceleration = modulatedTangentialAcceleration / radius;
+
+                // Update angular velocity using angular acceleration
+                angularVelocity += angularAcceleration * timeIncrement;
+
+                // Update angle using angular velocity
+                float angleDelta = angularVelocity * timeIncrement;
                 _cylinder.UpdateAngle(angleDelta);
             }
         }
