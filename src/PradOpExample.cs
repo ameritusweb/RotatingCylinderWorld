@@ -76,6 +76,8 @@ namespace RotatingCylinderWorld
                 var interaction = bucketCentersOpArray[i].Sub(cylindersTiled.CurrentTensor).PradOp.Square().PradOp;
                 var min = interaction.Min(squared.CurrentTensor).PradOp;
                 var bucketInteractions = min.Mul(new Tensor(cylindersTiled.CurrentShape, -1f)).PradOp.Exp().PradOp;
+
+                // continue with interactions...
             }
         }
 
