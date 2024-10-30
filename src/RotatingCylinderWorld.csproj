@@ -8,7 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="ParallelReverseAutoDiffLite" Version="1.2.16.1" />
+    <PackageReference Include="ParallelReverseAutoDiffLite" Version="1.2.17.1" />
   </ItemGroup>
 
 </Project>
