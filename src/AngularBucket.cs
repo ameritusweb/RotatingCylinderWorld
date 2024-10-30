@@ -103,19 +103,13 @@ namespace RotatingCylinderWorld
             return maxIndex;
         }
 
-
-
         public void Reset()
-
         {
             Array.Clear(_bucketValues, 0, _bucketValues.Length);
             _angleRelations.Clear();
         }
 
-
-
         public float[] GetBucketValues()
-
         {
             return (float[])_bucketValues.Clone();
         }
