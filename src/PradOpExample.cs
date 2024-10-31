@@ -4,13 +4,6 @@ namespace RotatingCylinderWorld
 {
     public class PradOpExample
     {
-        private PradVectorTools vectorTools;
-
-        public PradOpExample()
-        {
-            this.vectorTools = new PradVectorTools();
-        }
-
         public PradOp RunExample(int timeSteps, int numCylinders, int numBuckets, PradOp initialAngles, PradOp cylinderRadii, PradOp velocityOverTime, PradOp accelerationOverTime, PradOp deltasOverTime, PradOp cylinderBezier)
         {
             Tensor tensor = new Tensor(new[] { 1, numCylinders }, 0f);
@@ -18,7 +11,7 @@ namespace RotatingCylinderWorld
             PradOp opTime = new PradOp(time);
             PradOp cylinderAngles = new PradOp(tensor);
 
-            Tensor bucketCenters = new Tensor(new int[] { numBuckets, 1 }, 0f);
+            Tensor bucketCenters = new Tensor(new int[] { 1, numBuckets }, 0f);
             for (int i = 0; i < numBuckets; i++)
             {
                 float bucketCenterAngle = (2 * MathF.PI * i) / numBuckets;
@@ -26,38 +19,49 @@ namespace RotatingCylinderWorld
             }
 
             PradOp bucketCentersOp = new PradOp(bucketCenters);
-            PradOp bucketCentersTiled = bucketCentersOp.Tile(new int[] { 1, numCylinders }).PradOp;
-            BranchStack bucketCentersBranches = bucketCentersTiled.BranchStack(timeSteps - 1);
-            PradOp[] bucketCentersOpArray = new PradOp[timeSteps];
-            bucketCentersOpArray[0] = bucketCentersTiled;
-            for (int ii = 1; ii < timeSteps; ++ii)
-            {
-                bucketCentersOpArray[ii] = bucketCentersBranches.Pop();
-            }
+            PradOp bucketCentersTiled = bucketCentersOp.Tile(new int[] { numCylinders, 1 }).PradOp.Transpose(1, 0).PradOp;
 
-            var initializeCylinders = cylinderAngles.Add(cylinderAngles.CurrentTensor).PradOp;
+            PradOp[] bucketCentersOpArray = bucketCentersTiled.Replicate(timeSteps);
+
+            var initializeCylinders = cylinderAngles.Add(initialAngles.CurrentTensor).PradOp;
+            var initializeCylindersBranch = initializeCylinders.Branch();
 
             Tensor bucketInitialTensor = new Tensor(new[] { 1, numBuckets }, 0f);
             PradOp bucketCumulative = new PradOp(bucketInitialTensor);
 
+            var velocityOverTimeArray = velocityOverTime.Replicate(timeSteps);
+            var accelerationOverTimeArray = accelerationOverTime.Replicate(timeSteps);
+            var deltasOverTimeArray = deltasOverTime.Replicate(timeSteps);
+            var opTimeArray = opTime.Replicate(timeSteps);
+            var radiiBranchesArray = cylinderRadii.Replicate(timeSteps * numCylinders);
+            var cylinderBezierArray = cylinderBezier.Replicate(timeSteps * numCylinders * 4);
+            var initializeCylindersArray = initializeCylinders.Replicate(numCylinders);
+
             for (int i = 0; i < timeSteps; ++i)
             {
-                PradOp velocity = velocityOverTime.Indexer("...", $"{i}:{i + 1}").PradOp;
-                PradOp accel = accelerationOverTime.Indexer("...", $"{i}:{i + 1}").PradOp;
-                PradOp delta = deltasOverTime.Indexer("...", $"{i}:{i + 1}").PradOp;
-                PradOp opTimeI = opTime.Indexer("...", $"{i}:{i + 1}").PradOp;
+                PradOp velocity = velocityOverTimeArray[i].Indexer("...", $"{i}:{i + 1}").PradOp;
+                PradOp accel = accelerationOverTimeArray[i].Indexer("...", $"{i}:{i + 1}").PradOp;
+                PradOp delta = deltasOverTimeArray[i].Indexer("...", $"{i}:{i + 1}").PradOp;
+                PradOp opTimeI = opTimeArray[i].Indexer("...", $"{i}:{i + 1}").PradOp;
                 PradOp deltaDiv = delta.Div(opTimeI.CurrentTensor).PradOp;
                 PradOp[] cylinders = new PradOp[numCylinders];
+                if (i > 0)
+                {
+                    initializeCylindersArray = initializeCylindersBranch.Replicate(numCylinders);
+                }
 
                 for (int j = 0; j < numCylinders; ++j)
                 {
-                    PradOp cylinderRadius = cylinderRadii.Indexer("...", $"{j}:{j + 1}").PradOp;
+                    int ind = (i * numCylinders) + j;
+                    PradOp cylinderRadius = radiiBranchesArray[ind].Indexer("...", $"{j}:{j + 1}").PradOp;
                     velocity.Div(cylinderRadius.CurrentTensor);
-                    PradOp bezier1 = cylinderBezier.Indexer("0:1", $"...").PradOp;
-                    PradOp bezier2 = cylinderBezier.Indexer("1:2", $"...").PradOp;
-                    PradOp bezier3 = cylinderBezier.Indexer("2:3", $"...").PradOp;
-                    PradOp bezier4 = cylinderBezier.Indexer("3:4", $"...").PradOp;
-                    PradOp cylAngle = initializeCylinders.Indexer("...", $"{j}:{j + 1}").PradOp;
+
+                    int ind2 = (i * numCylinders * 4) + (j * 4);
+                    PradOp bezier1 = cylinderBezierArray[ind2].Indexer("0:1", $"...").PradOp;
+                    PradOp bezier2 = cylinderBezierArray[ind2 + 1].Indexer("1:2", $"...").PradOp;
+                    PradOp bezier3 = cylinderBezierArray[ind2 + 2].Indexer("2:3", $"...").PradOp;
+                    PradOp bezier4 = cylinderBezierArray[ind2 + 3].Indexer("3:4", $"...").PradOp;
+                    PradOp cylAngle = initializeCylindersArray[j].Indexer("...", $"{j}:{j + 1}").PradOp;
 
                     for (int k = 0; k < 10; ++k)
                     {
@@ -74,6 +78,11 @@ namespace RotatingCylinderWorld
                 }
 
                 PradOp cylindersConcat = cylinders[0].Concat(cylinders.Skip(1).Select(x => x.CurrentTensor).ToArray(), 1).PradOp;
+
+                initializeCylindersBranch.Add(cylindersConcat.CurrentTensor);
+
+                var cylindersConcatBranches = cylindersConcat.BranchStack(numBuckets);
+
                 PradOp cylindersTiled = cylindersConcat.Tile(new int[] { numBuckets, 1 }).PradOp;
                 PradOp twoPI = new PradOp(new Tensor(cylindersTiled.CurrentShape, 2 * MathF.PI));
                 var added = twoPI.Add(cylindersTiled.CurrentTensor).PradOp;
@@ -83,20 +92,22 @@ namespace RotatingCylinderWorld
                 var bucketInteractions = min.Mul(new Tensor(cylindersTiled.CurrentShape, -1f)).PradOp.Exp().PradOp;
                 PradOp[] bucketValueDiffs = new PradOp[numBuckets];
 
+                var bucketInteractionsArray = bucketInteractions.Replicate(numBuckets);
+
                 for (int bucketIdx = 0; bucketIdx < numBuckets; bucketIdx++)
                 {
                     // Get this bucket's interaction values for all cylinders
-                    PradOp bucketInteraction = bucketInteractions.Indexer($"{bucketIdx}:{bucketIdx + 1}", "...").PradOp;
+                    PradOp bucketInteraction = bucketInteractionsArray[bucketIdx].Indexer($"{bucketIdx}:{bucketIdx + 1}", "...").PradOp;
 
                     // Create pairs of angles for interaction calculation
-                    PradOp anglePairs = cylindersConcat.SelfPair().PradOp; // [2,M] tensor of angle pairs
+                    PradOp anglePairs = cylindersConcatBranches.Pop().SelfPair().PradOp; // [2,M] tensor of angle pairs
 
                     // Calculate both possible differences
                     PradOp firstRow = anglePairs.Indexer("0:1", "...").PradOp;
                     PradOp secondRow = anglePairs.Indexer("1:2", "...").PradOp;
                     PradOp regularDiff = firstRow.Sub(secondRow.CurrentTensor).PradOp.Abs().PradOp;
                     PradOp twoPI2 = new PradOp(new Tensor(regularDiff.CurrentShape, 2 * MathF.PI));
-                    PradOp wrappedAngle = secondRow.Add(twoPI.CurrentTensor).PradOp;
+                    PradOp wrappedAngle = secondRow.Add(twoPI2.CurrentTensor).PradOp;
                     PradOp wrappedDiff = firstRow.Sub(wrappedAngle.CurrentTensor).PradOp.Abs().PradOp;
 
                     // Take minimum of the two differences
@@ -119,9 +130,9 @@ namespace RotatingCylinderWorld
 
                 var bucketValueMax = bucketValueDiff.CurrentTensor.Data.Max();
                 PradOp maxReciprocalSquareOp = new PradOp(new Tensor(bucketValueDiff.CurrentShape, bucketValueMax + 1f)).Sub(bucketValueDiff.CurrentTensor).PradOp.Reciprocal().PradOp.Square().PradOp;
-                PradOp softmaxOp = this.vectorTools.SineSoftmax(maxReciprocalSquareOp).PradOp;
+                PradOp mulOp = maxReciprocalSquareOp.Mul(new Tensor(maxReciprocalSquareOp.CurrentShape, 10f)).PradOp;
 
-                bucketCumulative.Add(softmaxOp.CurrentTensor);
+                bucketCumulative.Add(mulOp.CurrentTensor);
             }
 
             return bucketCumulative;
